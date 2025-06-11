@@ -1,4 +1,4 @@
-// models/BaseModel.js - Base class สำหรับ database operations
+// models/BaseModel.js - Base class for database operations
 const TiberoExecutor = require('../utils/tiberoExecutor');
 
 class BaseModel {
@@ -45,42 +45,6 @@ class BaseModel {
         return result.length > 0 ? result[0] : null;
     }
 
-    // Search with pagination
-    async paginate(page = 1, pageSize = 10, conditions = '', orderBy = '') {
-        const offset = (page - 1) * pageSize;
-        const total = await this.count(conditions);
-        
-        let sql = `SELECT * FROM ${this.tableName}`;
-        
-        if (conditions) {
-            sql += ` WHERE ${conditions}`;
-        }
-        
-        if (orderBy) {
-            sql += ` ORDER BY ${orderBy}`;
-        }
-        
-        // Tibero pagination using ROWNUM
-        sql = `SELECT * FROM (
-            SELECT rownum rn, a.* FROM (${sql}) a 
-            WHERE rownum <= ${offset + pageSize}
-        ) WHERE rn > ${offset}`;
-        
-        const data = await this.executor.executeQuery(sql);
-        
-        return {
-            data: data,
-            pagination: {
-                page: page,
-                pageSize: pageSize,
-                total: total,
-                totalPages: Math.ceil(total / pageSize),
-                hasNext: page * pageSize < total,
-                hasPrev: page > 1
-            }
-        };
-    }
-
     // Execute custom SQL
     async customQuery(sql) {
         return await this.executor.executeQuery(sql);
@@ -88,4 +52,3 @@ class BaseModel {
 }
 
 module.exports = BaseModel;
-

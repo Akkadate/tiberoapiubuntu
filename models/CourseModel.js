@@ -6,29 +6,9 @@ class CourseModel extends BaseModel {
         super('COURSE');
     }
 
-    // Get all courses with Thai course names
+    // Get all courses
     async getAllCourses(limit = 100) {
-        const thaiQuery = `
-            SELECT COURSEID, 
-                   DUMP(COURSENAME) as COURSENAME_DUMP,
-                   DUMP(DESCRIPTION) as DESCRIPTION_DUMP
-            FROM COURSE 
-            WHERE ROWNUM <= ${limit}
-        `;
-        
-        const otherQuery = `
-            SELECT COURSEID, COURSENAMEENG, CREDITS, 
-                   SEMESTER, ACADEMICYEAR, STATUS
-            FROM COURSE 
-            WHERE ROWNUM <= ${limit}
-        `;
-        
-        const [thaiData, otherData] = await Promise.all([
-            this.executor.executeQuery(thaiQuery).catch(() => []),
-            this.executor.executeQuery(otherQuery).catch(() => [])
-        ]);
-        
-        return this.executor.mergeDataByCourseId(thaiData, otherData);
+        return await this.select('*', '', limit, 'COURSEID');
     }
 
     // Get courses by semester
@@ -36,32 +16,6 @@ class CourseModel extends BaseModel {
         const conditions = `SEMESTER = ${semester} AND ACADEMICYEAR = ${academicYear}`;
         return await this.select('*', conditions, limit, 'COURSEID');
     }
-
-    // Get course with enrolled students
-    async getCourseWithStudents(courseId) {
-        const course = await this.findById('COURSEID', courseId);
-        
-        if (!course) return null;
-        
-        const studentsQuery = `
-            SELECT s.STUDENTID, 
-                   DUMP(s.STUDENTNAME) as STUDENTNAME_DUMP,
-                   e.ENROLLDATE, e.GRADE
-            FROM STUDENT s
-            JOIN ENROLLMENT e ON s.STUDENTID = e.STUDENTID
-            WHERE e.COURSEID = '${courseId}'
-            ORDER BY s.STUDENTID
-        `;
-        
-        const students = await this.customQuery(studentsQuery);
-        
-        return {
-            course: course,
-            students: students,
-            totalStudents: students.length
-        };
-    }
 }
 
 module.exports = CourseModel;
-

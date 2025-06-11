@@ -1,4 +1,4 @@
-// clean-api.js - Clean API without debug data
+// server.js - Fixed syntax error
 const express = require('express');
 const { exec } = require('child_process');
 const fs = require('fs');
@@ -8,11 +8,10 @@ const app = express();
 const PORT = 5230;
 
 // Import routes
-const thesisRoutes = require('./routes/thesis');
+ const thesisRoutes = require('./routes/thesis');
 const studentRoutes = require('./routes/student');
 const courseRoutes = require('./routes/course');
-
-
+const bankRoutes = require('./routes/bank');
 
 // TIS-620 to UTF-8 mapping
 const TIS620_TO_UTF8 = {
@@ -219,13 +218,11 @@ app.use((req, res, next) => {
     next();
 });
 
-
 // Logging middleware
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
-
 
 // Health check
 app.get('/health', (req, res) => {
@@ -242,14 +239,11 @@ app.get('/health', (req, res) => {
     });
 });
 
-
-
 // API Routes
 app.use('/api/thesis', thesisRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/courses', courseRoutes);
-
-
+app.use('/api/bank', bankRoutes);
 
 // API Documentation endpoint
 app.get('/api', (req, res) => {
@@ -293,7 +287,6 @@ app.get('/api', (req, res) => {
         }
     });
 });
-
 
 // Test basic connection
 app.get('/test', async (req, res) => {
@@ -424,9 +417,7 @@ app.get('/count', async (req, res) => {
     }
 });
 
-
-
-/ Root endpoint
+// Root endpoint
 app.get('/', (req, res) => {
     res.redirect('/api');
 });
@@ -454,7 +445,6 @@ app.use((error, req, res, next) => {
     });
 });
 
-
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Tibero API v2.0 started on port ${PORT}`);
     console.log(`📊 Multiple tables: THESIS, STUDENT, COURSE`);
@@ -468,6 +458,3 @@ process.on('SIGINT', () => {
 });
 
 module.exports = app;
-
-
-
