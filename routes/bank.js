@@ -1,28 +1,37 @@
-// routes/bank.js - Bank API routes
+// routes/bank.js - Bank API routes (แก้ไขแล้ว)
 const express = require('express');
 const router = express.Router();
 const BankModel = require('../models/BankModel');
 
 const bankModel = new BankModel();
 
-// GET /api/bank - ดึงธนาคารทั้งหมด
-router.get('/', async (req, res) => {
+// GET /api/bank/debug - ทดสอบการเชื่อมต่อ
+router.get('/debug', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 100;
-        const banks = await bankModel.getAllBanks(limit);
-        
+        const testResult = await bankModel.testConnection();
         res.json({
-            message: 'Bank data retrieved successfully',
-            count: banks.length,
-            limit: limit,
-            data: banks
+            message: 'Bank connection test',
+            tableName: 'BANK',
+            result: testResult
         });
     } catch (error) {
-        console.error('Error getting banks:', error);
         res.status(500).json({ 
             error: error.message,
-            endpoint: '/api/bank'
+            message: 'Debug endpoint failed'
         });
+    }
+});
+
+// GET /api/bank/structure - ดูโครงสร้างตาราง
+router.get('/structure', async (req, res) => {
+    try {
+        const structure = await bankModel.getTableStructure();
+        res.json({
+            message: 'BANK table structure',
+            columns: structure
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -33,11 +42,35 @@ router.get('/count', async (req, res) => {
         
         res.json({
             message: 'Total bank count',
+            table: 'BANK',
             total_banks: totalCount
         });
     } catch (error) {
         console.error('Error counting banks:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/bank - ดึงธนาคารทั้งหมด
+router.get('/', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const banks = await bankModel.getAllBanks(limit);
+        
+        res.json({
+            message: 'Bank data retrieved successfully',
+            table: 'BANK',
+            count: banks.length,
+            limit: limit,
+            data: banks
+        });
+    } catch (error) {
+        console.error('Error getting banks:', error);
+        res.status(500).json({ 
+            error: error.message,
+            endpoint: '/api/bank',
+            suggestion: 'Try /api/bank/debug first'
+        });
     }
 });
 

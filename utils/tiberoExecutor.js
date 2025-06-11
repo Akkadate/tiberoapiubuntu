@@ -115,7 +115,7 @@ class TiberoExecutor {
             
             // Find header line
             if (!headerFound && line.includes('|') && 
-                (line.includes('STUDENTID') || line.includes('DUMP_DATA') || line.includes('TEST_NUMBER') || 
+                (line.includes('STUDENTID') || line.includes('DUMP_DATA') || line.includes('TEST_NUMBER') || line.includes('BANKCODE') || line.includes('BANKNAME') || line.includes('COUNT') || 
                  line.includes('COURSEID') || line.includes('THESISID'))) {
                 
                 const rawHeaders = line.split('|');
