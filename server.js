@@ -12,6 +12,7 @@ const PORT = 5230;
 const studentRoutes = require('./routes/student');
 const courseRoutes = require('./routes/course');
 const bankRoutes = require('./routes/bank');
+const quotaRoutes = require('./routes/quota');
 
 // TIS-620 to UTF-8 mapping
 const TIS620_TO_UTF8 = {
@@ -234,7 +235,10 @@ app.get('/health', (req, res) => {
         endpoints: [
             '/api/thesis',
             '/api/students', 
-            '/api/courses'
+            '/api/courses',
+            '/api/bank',
+            '/api/bank',
+            '/api/quota'
         ]
     });
 });
@@ -244,6 +248,7 @@ app.use('/api/thesis', thesisRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/bank', bankRoutes);
+app.use('/api/quota', quotaRoutes);
 
 // API Documentation endpoint
 app.get('/api', (req, res) => {
@@ -271,18 +276,42 @@ app.get('/api', (req, res) => {
                 'GET /api/students/paginate': 'Paginated students'
             },
             courses: {
-                'GET /api/courses': 'Get all courses',
-                'GET /api/courses/:id': 'Get course by ID',
-                'GET /api/courses/:id/students': 'Get course with students',
-                'GET /api/courses/semester/:semester/year/:year': 'Get courses by semester'
+                'GET /api/courses',
+            '/api/bank',
+            '/api/quota',
+            '/api/bank',
+            '/api/quota': 'Get all courses',
+                'GET /api/courses',
+            '/api/bank',
+            '/api/quota',
+            '/api/bank',
+            '/api/quota/:id': 'Get course by ID',
+                'GET /api/courses',
+            '/api/bank',
+            '/api/quota',
+            '/api/bank',
+            '/api/quota/:id/students': 'Get course with students',
+                'GET /api/courses',
+            '/api/bank',
+            '/api/quota',
+            '/api/bank',
+            '/api/quota/semester/:semester/year/:year': 'Get courses by semester'
             }
         },
         examples: {
             students: `http://localhost:${PORT}/api/students?limit=10`,
             student_detail: `http://localhost:${PORT}/api/students/50130052`,
             student_search: `http://localhost:${PORT}/api/students/search/นาย`,
-            courses: `http://localhost:${PORT}/api/courses?limit=20`,
-            course_students: `http://localhost:${PORT}/api/courses/CS101/students`,
+            courses: `http://localhost:${PORT}/api/courses',
+            '/api/bank',
+            '/api/quota',
+            '/api/bank',
+            '/api/quota?limit=20`,
+            course_students: `http://localhost:${PORT}/api/courses',
+            '/api/bank',
+            '/api/quota',
+            '/api/bank',
+            '/api/quota/CS101/students`,
             thesis: `http://localhost:${PORT}/api/thesis/10`
         }
     });
@@ -431,6 +460,10 @@ app.use('*', (req, res) => {
             '/api/thesis',
             '/api/students',
             '/api/courses',
+            '/api/bank',
+            '/api/quota',
+            '/api/bank',
+            '/api/quota',
             '/health'
         ]
     });

@@ -23,6 +23,19 @@ class TiberoExecutor {
         this.tempDir = '/tmp';
     }
     
+    // แปลงข้อความไทยจาก bytes
+    convertThaiText(text) {
+        if (!text || typeof text !== 'string') return text;
+        
+        // ถ้าเป็น ? marks → ลองแปลงจาก TIS-620
+        if (text.includes('?')) {
+            // ใช้ DUMP query สำหรับ column ที่มีภาษาไทย
+            return text; // คืนค่าเดิมไว้ก่อน เดี๋ยวใช้ DUMP แก้
+        }
+        
+        return text;
+    }
+    
     convertDumpToThai(dumpOutput) {
         try {
             const matches = dumpOutput.match(/Len=\d+:\s*([\d,\s]+)/);
@@ -58,7 +71,12 @@ class TiberoExecutor {
                 
                 const command = `isql -v ${this.dsn} < ${tempFile}`;
                 
-                exec(command, { timeout: 30000, encoding: 'utf8' }, (error, stdout, stderr) => {
+                // เพิ่ม encoding options
+                exec(command, { 
+                    timeout: 30000, 
+                    encoding: 'binary', // เปลี่ยนเป็น binary แล้วจัดการเอง
+                    env: { ...process.env, LC_ALL: 'th_TH.UTF-8' }
+                }, (error, stdout, stderr) => {
                     try {
                         fs.unlinkSync(tempFile);
                     } catch (e) {}
@@ -74,11 +92,20 @@ class TiberoExecutor {
                     }
                     
                     try {
-                        const result = this.parseResult(stdout);
+                        // แปลง binary เป็น string
+                        const output = Buffer.from(stdout, 'binary').toString('utf8');
+                        const result = this.parseResult(output);
                         resolve(result);
                     } catch (parseError) {
                         console.error('Parse error:', parseError);
-                        reject(new Error(`Parse error: ${parseError.message}`));
+                        // Fallback: ใช้ utf8 ปกติ
+                        try {
+                            const fallbackOutput = stdout.toString('utf8');
+                            const result = this.parseResult(fallbackOutput);
+                            resolve(result);
+                        } catch (e) {
+                            reject(new Error(`Parse error: ${parseError.message}`));
+                        }
                     }
                 });
                 
@@ -111,63 +138,65 @@ class TiberoExecutor {
                 continue;
             }
             
-            // Find header line - เพิ่ม BANK table headers
+            // Find header line
             if (!headerFound && line.includes('|') && 
                 (line.includes('STUDENTID') || line.includes('DUMP_DATA') || line.includes('TEST_NUMBER') || 
                  line.includes('BANKCODE') || line.includes('BANKNAME') || line.includes('COUNT') ||
-                 line.includes('COLUMN_NAME') || line.includes('DATA_TYPE') || line.includes('TOTAL_COUNT'))) {
+                 line.includes('COLUMN_NAME') || line.includes('QUOTAID') || line.includes('QUOTANAME') || line.includes('DATA_TYPE') || line.includes('TOTAL_COUNT'))) {
                 
                 const rawHeaders = line.split('|');
                 headers = rawHeaders.map(h => h.trim()).filter(h => h.length > 0);
                 headerFound = true;
-                console.log('Headers found:', headers); // Debug log
                 continue;
             }
             
             // Process data lines
-            if (headerFound && line.includes('|') && line.trim().startsWith('|')) {
-                const rawValues = line.split('|');
-                const values = rawValues.map(v => v.trim()).filter(v => v.length > 0);
-                
-                if (values.length === headers.length) {
-                    const rowObject = {};
+            if (headerFound && line.includes('|')) {
+                if (!line.includes('+---') && !line.includes('===') && line.split('|').length > 2) {
+                    const rawValues = line.split('|');
+                    const values = rawValues.map(v => v.trim()).filter(v => v.length > 0);
                     
-                    for (let j = 0; j < headers.length; j++) {
-                        const header = headers[j];
-                        let value = values[j];
+                    if (values.length >= headers.length - 1) {
+                        const rowObject = {};
                         
-                        if (value && value !== 'null' && value !== 'NULL') {
-                            // Handle DUMP columns - convert to Thai
-                            if (header.includes('DUMP')) {
-                                const thaiText = this.convertDumpToThai(value);
-                                const originalColumnName = header.replace('_DUMP', '').replace('DUMP_DATA', 'THESISNAME');
-                                
-                                // Store only converted data, not DUMP
-                                if (originalColumnName !== header) {
-                                    rowObject[originalColumnName] = thaiText;
+                        for (let j = 0; j < Math.min(headers.length, values.length); j++) {
+                            const header = headers[j];
+                            let value = values[j];
+                            
+                            if (value && value !== 'null' && value !== 'NULL') {
+                                // Handle DUMP columns
+                                if (header.includes('DUMP')) {
+                                    const thaiText = this.convertDumpToThai(value);
+                                    const originalColumnName = header.replace('_DUMP', '').replace('DUMP_DATA', 'THESISNAME');
+                                    
+                                    if (originalColumnName !== header) {
+                                        rowObject[originalColumnName] = thaiText;
+                                    }
+                                } else {
+                                    // Regular data - แปลงภาษาไทย
+                                    if (/^\d+$/.test(value)) {
+                                        value = parseInt(value);
+                                    } else if (/^\d+\.\d+$/.test(value)) {
+                                        value = parseFloat(value);
+                                    } else {
+                                        // ลองแปลงภาษาไทย
+                                        value = this.convertThaiText(value);
+                                    }
+                                    rowObject[header] = value;
                                 }
                             } else {
-                                // Regular data
-                                if (/^\d+$/.test(value)) {
-                                    value = parseInt(value);
-                                } else if (/^\d+\.\d+$/.test(value)) {
-                                    value = parseFloat(value);
+                                if (!header.includes('DUMP')) {
+                                    rowObject[header] = null;
                                 }
-                                rowObject[header] = value;
-                            }
-                        } else {
-                            if (!header.includes('DUMP')) {
-                                rowObject[header] = null;
                             }
                         }
+                        
+                        dataRows.push(rowObject);
                     }
-                    
-                    dataRows.push(rowObject);
                 }
             }
         }
         
-        console.log('Parsed rows:', dataRows.length); // Debug log
         return dataRows;
     }
     
@@ -176,14 +205,12 @@ class TiberoExecutor {
         const mergedData = [];
         const otherDataMap = {};
         
-        // Create map from otherData using STUDENTID as key
         otherData.forEach(row => {
             if (row.STUDENTID) {
                 otherDataMap[row.STUDENTID] = row;
             }
         });
         
-        // Merge thaiData with otherData
         thaiData.forEach(thaiRow => {
             const studentId = thaiRow.STUDENTID;
             const mergedRow = { ...thaiRow };
