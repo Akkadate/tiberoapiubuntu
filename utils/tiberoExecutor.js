@@ -1,9 +1,7 @@
-// utils/tiberoExecutor.js - Tibero Database Executor
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// TIS-620 to UTF-8 mapping
 const TIS620_TO_UTF8 = {
     161: 'ก', 162: 'ข', 163: 'ฃ', 164: 'ค', 165: 'ฅ', 166: 'ฆ', 167: 'ง',
     168: 'จ', 169: 'ฉ', 170: 'ช', 171: 'ซ', 172: 'ฌ', 173: 'ญ', 174: 'ฎ',
@@ -113,14 +111,16 @@ class TiberoExecutor {
                 continue;
             }
             
-            // Find header line
+            // Find header line - เพิ่ม BANK table headers
             if (!headerFound && line.includes('|') && 
-                (line.includes('STUDENTID') || line.includes('DUMP_DATA') || line.includes('TEST_NUMBER') || line.includes('BANKCODE') || line.includes('BANKNAME') || line.includes('COUNT') || 
-                 line.includes('COURSEID') || line.includes('THESISID'))) {
+                (line.includes('STUDENTID') || line.includes('DUMP_DATA') || line.includes('TEST_NUMBER') || 
+                 line.includes('BANKCODE') || line.includes('BANKNAME') || line.includes('COUNT') ||
+                 line.includes('COLUMN_NAME') || line.includes('DATA_TYPE') || line.includes('TOTAL_COUNT'))) {
                 
                 const rawHeaders = line.split('|');
                 headers = rawHeaders.map(h => h.trim()).filter(h => h.length > 0);
                 headerFound = true;
+                console.log('Headers found:', headers); // Debug log
                 continue;
             }
             
@@ -167,6 +167,7 @@ class TiberoExecutor {
             }
         }
         
+        console.log('Parsed rows:', dataRows.length); // Debug log
         return dataRows;
     }
     
@@ -189,31 +190,6 @@ class TiberoExecutor {
             
             if (studentId && otherDataMap[studentId]) {
                 Object.assign(mergedRow, otherDataMap[studentId]);
-            }
-            
-            mergedData.push(mergedRow);
-        });
-        
-        return mergedData;
-    }
-    
-    // Merge data by COURSEID
-    mergeDataByCourseId(thaiData, otherData) {
-        const mergedData = [];
-        const otherDataMap = {};
-        
-        otherData.forEach(row => {
-            if (row.COURSEID) {
-                otherDataMap[row.COURSEID] = row;
-            }
-        });
-        
-        thaiData.forEach(thaiRow => {
-            const courseId = thaiRow.COURSEID;
-            const mergedRow = { ...thaiRow };
-            
-            if (courseId && otherDataMap[courseId]) {
-                Object.assign(mergedRow, otherDataMap[courseId]);
             }
             
             mergedData.push(mergedRow);

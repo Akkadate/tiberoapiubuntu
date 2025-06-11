@@ -1,54 +1,21 @@
-// models/BankModel.js - BANK table operations (แก้ไขแล้ว)
 const BaseModel = require('./BaseModel');
 
 class BankModel extends BaseModel {
     constructor() {
-        // แก้ไขจาก 'AVSREG.BANK' เป็น 'BANK'
         super('BANK');
     }
 
-    // ดึงธนาคารทั้งหมด
-    async getAllBanks(limit = 100) {
-        const columns = 'BANKCODE, BANKNAME, BANKACCOUNT, TRANSACTIONFEE, VOUCHERTYPECODE, BANKFILECODE, BANKFEEID';
-        return await this.select(columns, '', limit, 'BANKCODE');
-    }
-
-    // ค้นหาธนาคารตาม BANKCODE
-    async getBankByCode(bankCode) {
-        const columns = 'BANKCODE, BANKNAME, BANKACCOUNT, TRANSACTIONFEE, VOUCHERTYPECODE, BANKFILECODE, BANKFEEID';
-        const conditions = `BANKCODE = '${bankCode}'`;
-        const result = await this.select(columns, conditions, 1);
-        return result.length > 0 ? result[0] : null;
-    }
-
-    // ค้นหาธนาคารตามชื่อ
-    async searchBankByName(searchTerm, limit = 20) {
-        const columns = 'BANKCODE, BANKNAME, BANKACCOUNT, TRANSACTIONFEE, VOUCHERTYPECODE, BANKFILECODE, BANKFEEID';
-        const conditions = `BANKNAME LIKE '%${searchTerm}%'`;
-        return await this.select(columns, conditions, limit, 'BANKNAME');
-    }
-
-    // นับจำนวนธนาคารทั้งหมด
-    async getTotalBankCount() {
-        const result = await this.customQuery('SELECT COUNT(*) as total_count FROM BANK');
-        return result[0]?.total_count || 0;
-    }
-
-    // ดึงธนาคารที่มี transaction fee ต่ำกว่าที่กำหนด
-    async getBanksByMaxFee(maxFee, limit = 50) {
-        const columns = 'BANKCODE, BANKNAME, BANKACCOUNT, TRANSACTIONFEE, VOUCHERTYPECODE, BANKFILECODE, BANKFEEID';
-        const conditions = `TRANSACTIONFEE <= ${maxFee}`;
-        return await this.select(columns, conditions, limit, 'TRANSACTIONFEE ASC');
-    }
-
-    // ทดสอบการเชื่อมต่อ
+    // ทดสอบการเชื่อมต่อและดูข้อมูล
     async testConnection() {
         try {
-            const result = await this.customQuery('SELECT COUNT(*) as count FROM BANK');
+            const countResult = await this.customQuery('SELECT COUNT(*) as count FROM BANK');
+            const sampleResult = await this.customQuery('SELECT * FROM BANK WHERE ROWNUM <= 3');
+            
             return { 
                 success: true, 
                 message: 'BANK table found!',
-                count: result[0]?.count || 0
+                count: countResult[0]?.count || 0,
+                sample: sampleResult
             };
         } catch (error) {
             return { 
@@ -58,11 +25,11 @@ class BankModel extends BaseModel {
         }
     }
 
-    // ดูโครงสร้างตาราง (ถ้าต้องการ)
+    // ดูโครงสร้างตาราง
     async getTableStructure() {
         try {
             const result = await this.customQuery(`
-                SELECT column_name, data_type, data_length 
+                SELECT column_name, data_type, data_length, nullable
                 FROM user_tab_columns 
                 WHERE table_name = 'BANK' 
                 ORDER BY column_id
@@ -70,6 +37,64 @@ class BankModel extends BaseModel {
             return result;
         } catch (error) {
             return { error: error.message };
+        }
+    }
+
+    // ดึงธนาคารทั้งหมด - เวอร์ชันที่แก้ไขแล้ว
+    async getAllBanks(limit = 100) {
+        try {
+            // ใช้ * ก่อนเพื่อดูว่ามี columns อะไรบ้าง
+            const sql = `SELECT * FROM ${this.tableName} WHERE ROWNUM <= ${limit} ORDER BY BANKCODE`;
+            console.log('Executing getAllBanks SQL:', sql);
+            return await this.customQuery(sql);
+        } catch (error) {
+            console.error('getAllBanks error:', error);
+            throw error;
+        }
+    }
+
+    // ค้นหาธนาคารตาม BANKCODE - ปรับปรุงแล้ว
+    async getBankByCode(bankCode) {
+        try {
+            const sql = `SELECT * FROM ${this.tableName} WHERE BANKCODE = '${bankCode}'`;
+            console.log('Executing getBankByCode SQL:', sql);
+            const result = await this.customQuery(sql);
+            return result.length > 0 ? result[0] : null;
+        } catch (error) {
+            console.error('getBankByCode error:', error);
+            throw error;
+        }
+    }
+
+    // นับจำนวนธนาคารทั้งหมด
+    async getTotalBankCount() {
+        try {
+            const result = await this.customQuery('SELECT COUNT(*) as total_count FROM BANK');
+            return result[0]?.total_count || 0;
+        } catch (error) {
+            console.error('getTotalBankCount error:', error);
+            return 0;
+        }
+    }
+
+    // สร้างข้อมูลทดสอบ
+    async insertTestData() {
+        try {
+            const testData = [
+                "INSERT INTO BANK (BANKCODE, BANKNAME, BANKACCOUNT, TRANSACTIONFEE, VOUCHERTYPECODE, BANKFILECODE, BANKFEEID) VALUES ('BBL', 'ธนาคารกรุงเทพ', '1234567890', 15, 'VT001', 'BF001', 'BFE001')",
+                "INSERT INTO BANK (BANKCODE, BANKNAME, BANKACCOUNT, TRANSACTIONFEE, VOUCHERTYPECODE, BANKFILECODE, BANKFEEID) VALUES ('SCB', 'ธนาคารไทยพาณิชย์', '0987654321', 20, 'VT002', 'BF002', 'BFE002')",
+                "INSERT INTO BANK (BANKCODE, BANKNAME, BANKACCOUNT, TRANSACTIONFEE, VOUCHERTYPECODE, BANKFILECODE, BANKFEEID) VALUES ('KTB', 'ธนาคารกรุงไทย', '1122334455', 10, 'VT003', 'BF003', 'BFE003')"
+            ];
+
+            for (const sql of testData) {
+                await this.customQuery(sql);
+            }
+            
+            await this.customQuery('COMMIT');
+            
+            return { success: true, message: 'Test data inserted successfully' };
+        } catch (error) {
+            return { success: false, error: error.message };
         }
     }
 }

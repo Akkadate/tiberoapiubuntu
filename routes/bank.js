@@ -1,4 +1,3 @@
-// routes/bank.js - Bank API routes (แก้ไขแล้ว)
 const express = require('express');
 const router = express.Router();
 const BankModel = require('../models/BankModel');
@@ -19,6 +18,19 @@ router.get('/debug', async (req, res) => {
             error: error.message,
             message: 'Debug endpoint failed'
         });
+    }
+});
+
+// GET /api/bank/setup - ใส่ข้อมูลทดสอบ
+router.get('/setup', async (req, res) => {
+    try {
+        const setupResult = await bankModel.insertTestData();
+        res.json({
+            message: 'Setup test data',
+            result: setupResult
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -69,48 +81,8 @@ router.get('/', async (req, res) => {
         res.status(500).json({ 
             error: error.message,
             endpoint: '/api/bank',
-            suggestion: 'Try /api/bank/debug first'
+            suggestion: 'Try /api/bank/debug first, then /api/bank/setup if needed'
         });
-    }
-});
-
-// GET /api/bank/search/:term - ค้นหาธนาคารตามชื่อ
-router.get('/search/:term', async (req, res) => {
-    try {
-        const searchTerm = req.params.term;
-        const limit = parseInt(req.query.limit) || 20;
-        
-        const banks = await bankModel.searchBankByName(searchTerm, limit);
-        
-        res.json({
-            message: `Search results for: ${searchTerm}`,
-            searchTerm: searchTerm,
-            count: banks.length,
-            data: banks
-        });
-    } catch (error) {
-        console.error('Error searching banks:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// GET /api/bank/fee/:maxFee - ธนาคารที่ค่าธรรมเนียมไม่เกินที่กำหนด
-router.get('/fee/:maxFee', async (req, res) => {
-    try {
-        const maxFee = parseFloat(req.params.maxFee);
-        const limit = parseInt(req.query.limit) || 50;
-        
-        const banks = await bankModel.getBanksByMaxFee(maxFee, limit);
-        
-        res.json({
-            message: `Banks with transaction fee <= ${maxFee}`,
-            maxFee: maxFee,
-            count: banks.length,
-            data: banks
-        });
-    } catch (error) {
-        console.error('Error getting banks by fee:', error);
-        res.status(500).json({ error: error.message });
     }
 });
 
